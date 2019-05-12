@@ -1,3 +1,8 @@
+#if 0
+g++ -std=c++11 -shared concaveman.cpp -o libconcaveman.so
+exit 0
+#endif
+
 //
 // Author: Stanislaw Adaszewski, 2019
 //
