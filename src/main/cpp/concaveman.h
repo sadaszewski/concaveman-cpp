@@ -179,7 +179,7 @@ public:
     typedef DATA data_type;
 
     rtree():
-    m_data(), m_is_leaf(false) {
+    m_is_leaf(false), m_data() {
         for (auto i = 0; i < DIM; i++) {
             m_bounds[i] = std::numeric_limits<T>::max();
             m_bounds[i + DIM] = std::numeric_limits<T>::min();
@@ -187,7 +187,7 @@ public:
     }
 
     rtree(data_type data, const bounds_type &bounds):
-    m_data(data), m_bounds(bounds), m_is_leaf(true) {
+    m_is_leaf(true), m_data(data), m_bounds(bounds) {
         for (auto i = 0; i < DIM; i++)
             if (bounds[i] > bounds[i + DIM])
                 throw std::runtime_error("Bounds minima have to be less than maxima");
@@ -430,7 +430,6 @@ public:
     ~CircularList() {
         std::cout << "~CircularList()" << std::endl;
         auto node = m_last;
-        auto i = 0;
         while (true) {
             // std::cout << (i++) << std::endl;
             auto tmp = node;
