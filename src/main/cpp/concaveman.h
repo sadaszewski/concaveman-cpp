@@ -17,6 +17,7 @@
 #include <queue>
 #include <assert.h>
 
+//#define DEBUG // uncomment to dump debug info to screen
 
 template<typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args&&... args) {
@@ -213,7 +214,9 @@ public:
                 best_child = *it->get();
             }
         }
+#ifdef DEBUG
         // std::cout << "best_child: " << best_child.get().id() << std::endl;
+#endif
         if (!best_child.get().is_leaf()) {
             best_child.get().insert(data, bounds);
             return;
@@ -428,10 +431,14 @@ public:
     }
 
     ~CircularList() {
+#ifdef DEBUG        
         std::cout << "~CircularList()" << std::endl;
+#endif
         auto node = m_last;
         while (true) {
+#ifdef DEBUG        
             // std::cout << (i++) << std::endl;
+#endif
             auto tmp = node;
             node = node->m_next;
             delete tmp;
@@ -488,7 +495,9 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
     typedef CircularList<node_type> circ_list_type;
     typedef circ_elem_type *circ_elem_ptr_type;
 
+#ifdef DEBUG
     std::cout << "concaveman()" << std::endl;
+#endif
 
     if (hull.size() == points.size()) {
         std::vector<point_type> res;
@@ -513,9 +522,13 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
         queue.push_back(last);
     }
 
+#ifdef DEBUG
     std::cout << "Starting hull: ";
+#endif
     for (auto elem = last->next(); ; elem=elem->next()) {
+#ifdef DEBUG
         std::cout << elem->data().p[0] << " " << elem->data().p[1] << std::endl;
+#endif
         if (elem == last)
             break;
     }
@@ -550,7 +563,9 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
 
         if (ok && std::min(getSqDist(p, a), getSqDist(p, b)) <= maxSqLen) {
 
+#ifdef DEBUG
             std::cout << "Modifying hull, p: " << p[0] << " " << p[1] << std::endl;
+#endif
 
             queue.push_back(elem);
             queue.push_back(elem->insert(p));
@@ -597,7 +612,9 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
     typedef std::reference_wrapper<const_tree_type> tree_ref_type;
     typedef std::tuple<T, tree_ref_type> tuple_type;
 
+#ifdef DEBUG
     std::cout << "findCandidate(), maxDist: " << maxDist << std::endl;
+#endif
 
     ok = false;
 
