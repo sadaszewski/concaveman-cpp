@@ -1,5 +1,8 @@
 //
 // Author: Stanislaw Adaszewski, 2019
+// C++ port from https://github.com/mapbox/concaveman (js)
+//
+// Comments from js repo added by wheeled
 //
 
 #pragma once
@@ -11,6 +14,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <iomanip>
 #include <stdlib.h>
 #include <limits>
 #include <set>
@@ -18,6 +22,7 @@
 #include <assert.h>
 
 //#define DEBUG // uncomment to dump debug info to screen
+//#define DEBUG_2 // uncomment to dump second-level debug info to screen
 
 template<typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args&&... args) {
@@ -45,6 +50,7 @@ template<class T> T orient2d(
 }
 
 
+// check if the edges (p1,q1) and (p2,q2) intersect
 template<class T> bool intersects(
     const std::array<T, 2> &p1,
     const std::array<T, 2> &q1,
@@ -60,6 +66,7 @@ template<class T> bool intersects(
 }
 
 
+// square distance between 2 points
 template<class T> T getSqDist(
     const std::array<T, 2> &p1,
     const std::array<T, 2> &p2) {
@@ -70,6 +77,7 @@ template<class T> T getSqDist(
 }
 
 
+// square distance from a point to a segment
 template<class T> T sqSegDist(
     const std::array<T, 2> &p,
     const std::array<T, 2> &p1,
@@ -98,6 +106,7 @@ template<class T> T sqSegDist(
 }
 
 
+// segment to segment distance, ported from http://geomalgorithms.com/a07-_distance.html by Dan Sunday
 template<class T> T sqSegSegDist(T x0, T y0,
     T x1, T y1,
     T x2, T y2,
@@ -214,11 +223,11 @@ public:
                 best_child = *it->get();
             }
         }
-#ifdef DEBUG
-        // std::cout << "best_child: " << best_child.get().id() << std::endl;
-#endif
         if (!best_child.get().is_leaf()) {
             best_child.get().insert(data, bounds);
+#ifdef DEBUG
+            std::cout << "best_child: " << bounds[0] << " " << bounds[1] << std::endl;
+#endif
             return;
         }
 
@@ -274,6 +283,23 @@ public:
                 m_children.erase(it++);
             } else
                 it++;
+        }
+    }
+
+    void print(int level = 0) {
+        // print the entire tree
+
+        for (auto it = m_children.begin(); it != m_children.end(); ) {
+            auto bounds = (*it)->m_bounds;
+            std::string pad(level, '\t');
+            if ((*it)->m_is_leaf) {
+                printf ("%s leaf %0.6f %0.6f \n", pad.c_str(), bounds[0], bounds[1]);
+            }
+            else {
+                printf ("%s branch %0.6f %0.6f %0.6f %0.6f \n", pad.c_str(), bounds[0], bounds[1], bounds[2], bounds[3]);
+                (*it)->print(level + 1);
+            }
+            it++;
         }
     }
 
@@ -437,7 +463,7 @@ public:
         auto node = m_last;
         while (true) {
 #ifdef DEBUG        
-            // std::cout << (i++) << std::endl;
+//             std::cout << (i++) << std::endl;
 #endif
             auto tmp = node;
             node = node->m_next;
@@ -473,6 +499,7 @@ private:
 };
 
 
+// update the bounding box of a node's edge
 template<class T> void updateBBox(typename CircularElement<T>::ptr_type elem) {
     auto &node(elem->data());
     auto p1 = node.p;
@@ -484,10 +511,40 @@ template<class T> void updateBBox(typename CircularElement<T>::ptr_type elem) {
 }
 
 
+#ifdef DEBUG_2
+template<class T> void snapshot(
+    const std::array<T, 2> &a,
+    const std::array<T, 2> &b,
+    const std::array<T, 2> &c,
+    const std::array<T, 2> &d,
+    const double sqLen,
+    const double maxSqLen,
+    const std::array<T, 2> &trigger,
+    const bool use_trigger) {
+
+    if ( !use_trigger || trigger == b ) {
+        if ( !use_trigger )
+            printf ("Snapshot untriggered\n");
+        else
+            printf ("Snapshot trigger: %0.6f %0.6f \n", trigger[0], trigger[1]);
+        printf ("... segment a, b: %0.6f %0.6f, %0.6f %0.6f \n", a[0], a[1], b[0], b[1]);
+        printf ("... segment c, d: %0.6f %0.6f, %0.6f %0.6f \n", c[0], c[1], d[0], d[1]);
+        printf ("... sqDist a-b, b-c, c-d: %e, %e, %e", getSqDist(a, b), getSqDist(b, c), getSqDist(c, d));
+        printf ("... sqLen, maxSqLen: %e, %e", sqLen, maxSqLen);
+    }
+}
+#endif
+
+
 template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
     const std::vector<std::array<T, 2>> &points,
+    // start with a convex hull of the points
     const std::vector<int> &hull,
-    T concavity=2, T lengthThreshold=0) {
+    // a relative measure of concavity; higher value means simpler hull
+    T concavity=2,
+    // when a segment goes below this length threshold, it won't be drilled down further
+    T lengthThreshold=0
+    ) {
 
     typedef Node<T> node_type;
     typedef std::array<T, 2> point_type;
@@ -499,12 +556,14 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
     std::cout << "concaveman()" << std::endl;
 #endif
 
+    // exit if hull includes all points already
     if (hull.size() == points.size()) {
         std::vector<point_type> res;
         for (auto &i : hull) res.push_back(points[i]);
         return res;
     }
 
+    // index the points with an R-tree
     rtree<T, 2, MAX_CHILDREN, point_type> tree;
 
     for (auto &p : points)
@@ -515,6 +574,7 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
 
     std::list<circ_elem_ptr_type> queue;
 
+    // turn the convex hull into a linked list and populate the initial edge queue with the nodes
     for (auto &idx : hull) {
         auto &p = points[idx];
         tree.erase(p, { p[0], p[1], p[0], p[1] });
@@ -522,6 +582,11 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
         queue.push_back(last);
     }
 
+#ifdef DEBUG_2
+    tree.print(0);
+#endif
+
+    // loops through the hull?  why?
 #ifdef DEBUG
     std::cout << "Starting hull: ";
 #endif
@@ -533,6 +598,7 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
             break;
     }
 
+    // index the segments with an R-tree (for intersection checks)
     rtree<T, 2, MAX_CHILDREN, circ_elem_ptr_type> segTree;
     for (auto &elem : queue) {
         auto &node(elem->data());
@@ -544,32 +610,45 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
     auto sqConcavity = concavity * concavity;
     auto sqLenThreshold = lengthThreshold * lengthThreshold;
 
+    // process edges one by one
     while (!queue.empty()) {
         auto elem = *queue.begin();
         queue.pop_front();
 
-        auto a = elem->data().p;
-        auto b = elem->next()->data().p;
+        auto a = elem->prev()->data().p;
+        auto b = elem->data().p;
+        auto c = elem->next()->data().p;
+        auto d = elem->next()->next()->data().p;
 
-        auto sqLen = getSqDist(a, b);
+        // skip the edge if it's already short enough
+        auto sqLen = getSqDist(b, c);
         if (sqLen < sqLenThreshold)
             continue;
 
         auto maxSqLen = sqLen / sqConcavity;
 
-        bool ok;
-        auto p = findCandidate(tree, elem->prev()->data().p, a, b,
-            elem->next()->next()->data().p, maxSqLen, segTree, ok);
-
-        if (ok && std::min(getSqDist(p, a), getSqDist(p, b)) <= maxSqLen) {
-
-#ifdef DEBUG
-            std::cout << "Modifying hull, p: " << p[0] << " " << p[1] << std::endl;
+#ifdef DEBUG_2
+        // dump key parameters either on every pass or when a certain point is 'b'
+        point_type trigger = { 151.1373474787800, -33.7733192376544 };
+        snapshot(a, b, c, d, sqLen, maxSqLen, trigger, true);
 #endif
 
+        // find the best connection point for the current edge to flex inward to
+        bool ok;
+        auto p = findCandidate(tree, a, b, c, d, maxSqLen, segTree, ok);
+
+        // if we found a connection and it satisfies our concavity measure
+        if (ok && std::min(getSqDist(p, b), getSqDist(p, c)) <= maxSqLen) {
+
+#ifdef DEBUG
+            printf ("Modifying hull, p: %0.6f %0.6f \n" ,p[0], p[1]);
+#endif
+
+            // connect the edge endpoints through this point and add 2 new edges to the queue
             queue.push_back(elem);
             queue.push_back(elem->insert(p));
 
+            // update point and segment indexes
             auto &node = elem->data();
             auto &next = elem->next()->data();
 
@@ -582,8 +661,13 @@ template<class T, int MAX_CHILDREN> std::vector<std::array<T, 2>> concaveman(
             segTree.insert(elem, { node.minX, node.minY, node.maxX, node.maxY });
             segTree.insert(elem->next(), { next.minX, next.minY, next.maxX, next.maxY });
         }
+#ifdef DEBUG
+        else
+            printf ("No point found along segment: %0.6f %0.6f, %0.6f %0.6f \n", b[0], b[1], c[0], c[1]);
+#endif
     }
 
+    // convert the resulting hull linked list to an array of points
     std::vector<point_type> concave;
     for (auto elem = last->next(); ; elem = elem->next()) {
         concave.push_back(elem->data().p);
@@ -621,6 +705,8 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
     std::priority_queue<tuple_type, std::vector<tuple_type>, compare_first<tuple_type>> queue;
     std::reference_wrapper<const_tree_type> node = tree;
 
+    // search through the point R-tree with a depth-first search using a priority queue
+    // in the order of distance to the edge (b, c)
     while (true) {
         for (auto &child : node.get().children()) {
 
@@ -629,7 +715,7 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
 
             auto dist = child->is_leaf() ? sqSegDist(pt, b, c) : sqSegBoxDist(b, c, *child);
             if (dist > maxDist)
-                continue;
+                continue;  // skip the node if it's farther than we ever need
 
             queue.push(tuple_type(-dist, *child));
         }
@@ -641,17 +727,33 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
             auto bounds = std::get<1>(item).get().bounds();
             point_type p = { bounds[0], bounds[1] };
 
+            // skip all points that are as close to adjacent edges (a,b) and (c,d),
+            // and points that would introduce self-intersections when connected
             auto d0 = sqSegDist(p, a, b);
             auto d1 = sqSegDist(p, c, d);
 
-            if (std::get<0>(item) < d0 && std::get<0>(item) < d1 &&
+#ifdef DEBUG_2
+            printf ("    p: %0.6f %0.6f sqSegDist: %e, %e, %e \n", bounds[0], bounds[1], d0, std::get<0>(item), d1);
+#endif
+
+            if (-std::get<0>(item) < d0 && -std::get<0>(item) < d1 &&
                 noIntersections(b, p, segTree) &&
                 noIntersections(c, p, segTree)) {
 
                 ok = true;
                 return std::get<1>(item).get().data();
             }
-        }
+
+#ifdef DEBUG_2
+            else {
+                bool cond1 = -std::get<0>(item) < d0;
+                bool cond2 = -std::get<0>(item) < d1;
+                bool cond3 = noIntersections(b, p, segTree);
+                bool cond4 = noIntersections(c, p, segTree);
+                std::cout << "Not OK: " << cond1 << " " << cond2 << " " << cond3 << " " << cond4 << std::endl;
+            }
+#endif
+         }
 
         if (queue.empty())
             break;
@@ -664,6 +766,7 @@ template<class T, int MAX_CHILDREN> std::array<T, 2> findCandidate(
 }
 
 
+// square distance from a segment bounding box to the given one
 template<class T, int MAX_CHILDREN, class USER_DATA> T sqSegBoxDist(
     const std::array<T, 2> &a,
     const std::array<T, 2> &b,
@@ -713,6 +816,7 @@ template<class T, int MAX_CHILDREN, class USER_DATA> bool inside(
 }
 
 
+// check if the edge (a,b) doesn't intersect any other edges
 template<class T, int MAX_CHILDREN> bool noIntersections(
     const std::array<T, 2> &a,
     const std::array<T, 2> &b,
