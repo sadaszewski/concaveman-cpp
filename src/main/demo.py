@@ -7,7 +7,7 @@ import numpy as np
 from scipy.spatial import ConvexHull
 
 
-with open('../../../data/points-1k.json', 'r') as f:
+with open('../../data/points-1k.json', 'r') as f:
     pts = json.load(f)
     pts = np.array(pts)
 
