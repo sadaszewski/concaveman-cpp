@@ -8,11 +8,14 @@ import os
 import sys
 import numpy as np  # For the include directory.
 
-rootpath = os.path.abspath(os.path.dirname(__file__))
-long_description = open(os.path.join(rootpath, 'README.md')).read()
+from pathlib import Path
+
+rootpath = Path(__file__).parent.resolve()
+
+long_description = open(rootpath / 'README.md').read()
 
 include_dirs = [np.get_include(),
-                os.path.join(rootpath, 'src', 'cpp')]
+                str(rootpath / 'src' / 'cpp')]
 
 # # Need the stdint header for Windows (VS2008).
 # if sys.platform.startswith('win') and sys.version_info.major <= 2:
@@ -24,7 +27,9 @@ ext_modules = [Extension("concaveman.concaveman",
                           "src/cpp/concaveman.cpp"],
                          include_dirs=include_dirs,
                          language="c++",
-                         language_level='3',
+                         # this work on the mac, should work in Linux
+                         # for Windows: who knows?
+                         extra_compile_args=['-std=c++11'],
                          )]
 
 
@@ -39,6 +44,8 @@ def extract_version():
             raise ValueError("Couldn't find __version__ in %s" % fname)
     return version
 
+print("building version: ", extract_version())
+
 setup(
     name="concaveman",
     version=extract_version(),
@@ -52,7 +59,7 @@ setup(
     ext_modules=cythonize(ext_modules),
     packages=["src/concaveman", "src/concaveman/tests"],
     install_requires=['numpy', 'scipy'],
-    setup_requires=['cython>0.29', 'setuptools'],
+    setup_requires=['cython>0.29'],
     tests_require=['pytest'],
     classifiers=[
         "Development Status :: 4 - Beta",

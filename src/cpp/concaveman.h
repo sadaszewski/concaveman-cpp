@@ -24,6 +24,15 @@
 //#define DEBUG // uncomment to dump debug info to screen
 //#define DEBUG_2 // uncomment to dump second-level debug info to screen
 
+// declared here so the Cython can build
+void pyconcaveman2d(double *points_c, size_t num_points,
+    int *hull_points_c, size_t num_hull_points,
+    double concavity, double lengthThreshold,
+    double **p_concave_points_c,
+    size_t *p_num_concave_points,
+    void(**p_free)(void*))
+
+
 template<typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
@@ -457,12 +466,12 @@ public:
     }
 
     ~CircularList() {
-#ifdef DEBUG        
+#ifdef DEBUG
         std::cout << "~CircularList()" << std::endl;
 #endif
         auto node = m_last;
         while (true) {
-#ifdef DEBUG        
+#ifdef DEBUG
 //             std::cout << (i++) << std::endl;
 #endif
             auto tmp = node;
