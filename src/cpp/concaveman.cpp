@@ -9,20 +9,21 @@ exit 0
 
 #include "concaveman.h"
 
-extern "C" {
-    void pyconcaveman2d(double *points_c, size_t num_points,
-        int *hull_points_c, size_t num_hull_points,
-        double concavity, double lengthThreshold,
-        double **concave_points_c, size_t *num_concave_points,
-        void(**p_free)(void*));
-}
+// extern "C" {
+//     void pyconcaveman2d(double *points_c, size_t num_points,
+//         int *hull_points_c, size_t num_hull_points,
+//         double concavity, double lengthThreshold,
+//         double **concave_points_c, size_t *num_concave_points,
+//         void(**p_free)(void*));
+// }
 
 void pyconcaveman2d(double *points_c, size_t num_points,
     int *hull_points_c, size_t num_hull_points,
     double concavity, double lengthThreshold,
     double **p_concave_points_c,
-    size_t *p_num_concave_points,
-    void(**p_free)(void*)) {
+    size_t *p_num_concave_points)
+//    void(**p_free)(void*))
+    {
 
     std::cout << "pyconcaveman2d(), concavity: " << concavity <<
         " lengthThreshold: " << lengthThreshold << std::endl;
@@ -54,12 +55,16 @@ void pyconcaveman2d(double *points_c, size_t num_points,
     for (auto &p : concave_points)
         std::cout << p[0] << " " << p[1] << std::endl;
 
+    std::cout << "about to copy points" << std::endl;
+
     double *concave_points_c = *p_concave_points_c = (double*) malloc(sizeof(double) * 2 * concave_points.size());
-    for (auto i = 0; i < concave_points.size(); i++) {
-        concave_points_c[i << 1] = concave_points[i][0];
-        concave_points_c[(i << 1) + 1] = concave_points[i][1];
-    }
+    // for (auto i = 0; i < concave_points.size(); i++) {
+    //     concave_points_c[i << 1] = concave_points[i][0];
+    //     concave_points_c[(i << 1) + 1] = concave_points[i][1];
+    // }
+
+    std::cout << "about to return from cpp function" << std::endl;
 
     *p_num_concave_points = concave_points.size();
-    *p_free = free;
+    // *p_free = free;
 }

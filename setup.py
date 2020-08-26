@@ -5,7 +5,6 @@ from setuptools import setup, Extension
 from Cython.Build import cythonize
 
 import os
-import sys
 import numpy as np  # For the include directory.
 
 from pathlib import Path
@@ -22,7 +21,7 @@ include_dirs = [np.get_include(),
 #     include_dirs.append(os.path.join('rootpath', 'src', 'win_headers'))
 
 
-ext_modules = [Extension("concaveman.concaveman",
+ext_modules = [Extension("concaveman.build_hull",
                          ["src/concaveman/build_hull.pyx",
                           "src/cpp/concaveman.cpp"],
                          include_dirs=include_dirs,
@@ -44,8 +43,6 @@ def extract_version():
             raise ValueError("Couldn't find __version__ in %s" % fname)
     return version
 
-print("building version: ", extract_version())
-
 setup(
     name="concaveman",
     version=extract_version(),
@@ -57,7 +54,8 @@ setup(
     license="BSD",
     # keywords = "",
     ext_modules=cythonize(ext_modules),
-    packages=["src/concaveman", "src/concaveman/tests"],
+    packages=["concaveman", "concaveman/tests"],
+    package_dir={'': 'src'},
     install_requires=['numpy', 'scipy'],
     setup_requires=['cython>0.29'],
     tests_require=['pytest'],
