@@ -21,15 +21,15 @@ include_dirs = [np.get_include(),
 #     include_dirs.append(os.path.join('rootpath', 'src', 'win_headers'))
 
 
-ext_modules = [Extension("concaveman.build_hull",
-                         ["src/concaveman/build_hull.pyx",
-                          "src/cpp/concaveman.cpp"],
-                         include_dirs=include_dirs,
-                         language="c++",
-                         # this work on the mac, should work in Linux
-                         # for Windows: who knows?
-                         extra_compile_args=['-std=c++11'],
-                         )]
+ext_modules = cythonize([Extension("concaveman.build_hull",
+                                   ["src/concaveman/build_hull.pyx",
+                                    "src/cpp/concaveman.cpp"],
+                                   include_dirs=include_dirs,
+                                   language="c++",
+                                   # this work on the mac, should work in Linux
+                                   # for Windows: who knows?
+                                   extra_compile_args=['-std=c++11'],
+                                   )])
 
 
 def extract_version():
@@ -53,7 +53,7 @@ setup(
     url="https://github.com/NOAA-ORR-ERD",
     license="BSD",
     # keywords = "",
-    ext_modules=cythonize(ext_modules),
+    ext_modules=ext_modules,
     packages=["concaveman", "concaveman/tests"],
     package_dir={'': 'src'},
     install_requires=['numpy', 'scipy'],

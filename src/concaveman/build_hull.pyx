@@ -1,3 +1,5 @@
+# cython: language_level=3
+
 """
 wrapper of concaveman
 
@@ -9,9 +11,6 @@ But we should be able to call the Templates directly from Cython, so save that t
 
 Though maybe getting it to stop segfaulting first would be a good step
 """
-
-
-#cython: language_level=3
 
 import numpy as np
 cimport numpy as cnp
@@ -71,35 +70,45 @@ cpdef concave_hull(cnp.float64_t[:,:] points,
     # if np.any(hull >= len(points)) or np.any(hull < 0):
     #     raise ValueError('hull indices out of bounds')
 
-    cdef double** p_concave_points = NULL
-    cdef size_t num_concave_points = 0
+    cdef double* p_concave_points = NULL
+    cdef size_t[1] num_concave_points
+    num_concave_points[0] = 2
     # cdef f_type p_free = NULL
 
+    print("num concave points:", num_concave_points[0])
     print("in cython: about to call pyconcaveman2d")
+
     pyconcaveman2d(&points[0, 0],
                    len(points),
                    &hull[0],
                    len(hull),
                    concavity,
                    length_threshold,
-                   p_concave_points,
-                   &num_concave_points,
+                   &p_concave_points,
+                   num_concave_points,
                    # p_free). # should't need this, as we're c omiling with same lib.
                    )
 
-    cdef cnp.ndarray[cnp.float64_t, ndim=2, mode="c"] concave_points
-    concave_points = np.empty((num_concave_points, 2), dtype=np.float64)
-    cdef unsigned int i
-    for i in range(len(concave_points)):
-        concave_points[i, 0] = p_concave_points[i][0]
-        concave_points[i, 1] = p_concave_points[i][1]
+    print("cpp concave hull returned")
+    print("num concave points:", num_concave_points[0])
 
-    print('in cython: concave_points:', concave_points)
+    #cdef cnp.float64_t[:, :] concave_points_mview = p_concave_points
+    cdef cnp.ndarray[cnp.float64_t, ndim=2, mode="c"] arr_concave_points
+    arr_concave_points = np.zeros((num_concave_points[0], 2), dtype=np.float64)
+    cdef unsigned int i
+    print(p_concave_points[0])
+    for i in range(num_concave_points[0]):
+    #     arr_concave_points[i, 0] = p_concave_points[i]
+    #     arr_concave_points[i, 1] = p_concave_points[i]
+        arr_concave_points[i, 0] = p_concave_points[i * 2]
+        arr_concave_points[i, 1] = p_concave_points[i * 2 + 1]
+
+    print('in cython again: concave_points:', arr_concave_points)
 
     # fixme: need to make sure this isn't a memory leak!
     # as we are compiling the C++ code all together, the
     # plan free() should work. I think.
-    free(p_concave_points)
+    # free(p_concave_points)
 
-    return concave_points
+    return arr_concave_points
 

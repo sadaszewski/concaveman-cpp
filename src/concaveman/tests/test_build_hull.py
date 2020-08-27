@@ -1,6 +1,7 @@
 """
 test_build_hull.py
 """
+import sys
 import numpy as np
 from concaveman.build_hull import concave_hull
 
