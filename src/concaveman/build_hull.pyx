@@ -7,9 +7,14 @@ NOTE: after working on this for a while, I realized that concaveman.cpp was
 mostly a wrapper that was set up to call the templates from C, with
 regular C arrays.
 
-But we should be able to call the Templates directly from Cython, so save that tranlsation step.
+But we should be able to call the Templates directly from Cython, so save that
+translation step.
 
-Though maybe getting it to stop segfaulting first would be a good step
+but other than some wasted data copying, this works.
+
+NOTE: I removed the function pointer for the free() call, as this code is now using that
+      malloc'ed pointer to build the returning numpy array -- so should be freed by
+      python when the numpy array is deleted.
 """
 
 import numpy as np
@@ -27,16 +32,7 @@ cdef extern from "pyconcaveman.h":
                         double lengthThreshold,
                         double **concave_points_c,
                         size_t *num_concave_points,
-                        # void(**p_free)(void*),
                         )
-
-# defining the function pointer type
-# ctypedef void (**f_type)(void*)
-
-# def concave_hull(cnp.ndarray[double, ndim=2, mode="c"] points,
-#                  cnp.ndarray[cnp.int32_t, ndim=2, mode="c"] hull,
-#                  double concavity=2.0,
-#                  double length_threshold=0.0):
 
 cpdef concave_hull(cnp.float64_t[:,:] points,
                    int[:] hull,
@@ -58,25 +54,18 @@ cpdef concave_hull(cnp.float64_t[:,:] points,
     :type length_threshold: python float
     """
 
-    # points = np.array(points).astype(np.double)
-    # hull = np.array(hull).astype(np.int32)
-
     if points.shape[1] != 2:
         raise ValueError('points must be an Nx2 array')
 
-    # if len(hull.shape) != 1:
-    #     raise ValueError('hull must be a 1-D array')
-
+    # now a memoryview, so any isn't helpful here.
+    # should this check be at a higher level?
     # if np.any(hull >= len(points)) or np.any(hull < 0):
     #     raise ValueError('hull indices out of bounds')
 
     cdef double* p_concave_points = NULL
-    cdef size_t[1] num_concave_points
-    num_concave_points[0] = 2
-    # cdef f_type p_free = NULL
+    cdef size_t num_concave_points = 0
 
-    print("num concave points:", num_concave_points[0])
-    print("in cython: about to call pyconcaveman2d")
+    # print("in cython: about to call pyconcaveman2d")
 
     pyconcaveman2d(&points[0, 0],
                    len(points),
@@ -85,25 +74,21 @@ cpdef concave_hull(cnp.float64_t[:,:] points,
                    concavity,
                    length_threshold,
                    &p_concave_points,
-                   num_concave_points,
-                   # p_free). # should't need this, as we're c omiling with same lib.
+                   &num_concave_points,
                    )
 
-    print("cpp concave hull returned")
-    print("num concave points:", num_concave_points[0])
+    # print("cpp concave hull returned")
+    # print("num concave points:", num_concave_points)
 
-    #cdef cnp.float64_t[:, :] concave_points_mview = p_concave_points
     cdef cnp.ndarray[cnp.float64_t, ndim=2, mode="c"] arr_concave_points
-    arr_concave_points = np.zeros((num_concave_points[0], 2), dtype=np.float64)
-    cdef unsigned int i
-    print(p_concave_points[0])
-    for i in range(num_concave_points[0]):
-    #     arr_concave_points[i, 0] = p_concave_points[i]
-    #     arr_concave_points[i, 1] = p_concave_points[i]
-        arr_concave_points[i, 0] = p_concave_points[i * 2]
-        arr_concave_points[i, 1] = p_concave_points[i * 2 + 1]
+    arr_concave_points = np.zeros((num_concave_points, 2), dtype=np.float64)
 
-    print('in cython again: concave_points:', arr_concave_points)
+    # could we use a memcopy here?
+    cdef double* temp = &arr_concave_points[0, 0]
+    for i in range(num_concave_points * 2):
+        temp[i] = p_concave_points[i]
+
+    # print('in cython again: concave_points:\n', arr_concave_points)
 
     # fixme: need to make sure this isn't a memory leak!
     # as we are compiling the C++ code all together, the
@@ -111,4 +96,3 @@ cpdef concave_hull(cnp.float64_t[:,:] points,
     free(p_concave_points)
 
     return arr_concave_points
-
