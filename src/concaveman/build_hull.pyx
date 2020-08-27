@@ -21,6 +21,8 @@ import numpy as np
 cimport numpy as cnp
 
 from libc.stdlib cimport free
+from libc.string cimport memcpy
+
 
 cdef extern from "pyconcaveman.h":
 
@@ -62,7 +64,7 @@ cpdef concave_hull(cnp.float64_t[:,:] points,
     # if np.any(hull >= len(points)) or np.any(hull < 0):
     #     raise ValueError('hull indices out of bounds')
 
-    cdef double* p_concave_points = NULL
+    cdef cnp.float64_t* p_concave_points = NULL
     cdef size_t num_concave_points = 0
 
     # print("in cython: about to call pyconcaveman2d")
@@ -80,13 +82,19 @@ cpdef concave_hull(cnp.float64_t[:,:] points,
     # print("cpp concave hull returned")
     # print("num concave points:", num_concave_points)
 
+    # create an array to return
     cdef cnp.ndarray[cnp.float64_t, ndim=2, mode="c"] arr_concave_points
     arr_concave_points = np.zeros((num_concave_points, 2), dtype=np.float64)
 
-    # could we use a memcopy here?
-    cdef double* temp = &arr_concave_points[0, 0]
-    for i in range(num_concave_points * 2):
-        temp[i] = p_concave_points[i]
+    # loping through element by element
+    # cdef cnp.float64_t* temp = &arr_concave_points[0, 0]
+    # for i in range(num_concave_points * 2):
+    #     temp[i] = p_concave_points[i]
+
+    # copy the data to the ndarray's memory block directly
+    memcpy(&arr_concave_points[0, 0],
+           p_concave_points,
+           sizeof(cnp.float64_t) * num_concave_points * 2)
 
     # print('in cython again: concave_points:\n', arr_concave_points)
 
