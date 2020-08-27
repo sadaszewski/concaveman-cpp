@@ -108,7 +108,7 @@ cpdef concave_hull(cnp.float64_t[:,:] points,
     # fixme: need to make sure this isn't a memory leak!
     # as we are compiling the C++ code all together, the
     # plan free() should work. I think.
-    # free(p_concave_points)
+    free(p_concave_points)
 
     return arr_concave_points
 
