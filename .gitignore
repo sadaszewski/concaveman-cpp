@@ -1,3 +1,7 @@
+.DS_Store
+concaveman.egg-info
+build/
+
 # Prerequisites
 *.d
 

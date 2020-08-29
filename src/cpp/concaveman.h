@@ -24,6 +24,7 @@
 //#define DEBUG // uncomment to dump debug info to screen
 //#define DEBUG_2 // uncomment to dump second-level debug info to screen
 
+
 template<typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
@@ -457,12 +458,12 @@ public:
     }
 
     ~CircularList() {
-#ifdef DEBUG        
+#ifdef DEBUG
         std::cout << "~CircularList()" << std::endl;
 #endif
         auto node = m_last;
         while (true) {
-#ifdef DEBUG        
+#ifdef DEBUG
 //             std::cout << (i++) << std::endl;
 #endif
             auto tmp = node;
