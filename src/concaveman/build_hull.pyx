@@ -98,9 +98,9 @@ cpdef concave_hull(cnp.float64_t[:,:] points,
 
     # print('in cython again: concave_points:\n', arr_concave_points)
 
-    # fixme: need to make sure this isn't a memory leak!
-    # as we are compiling the C++ code all together, the
-    # plan free() should work. I think.
+    # As we are compiling the C++ code all together, the
+    # plain free() should work.
+    # on OS-X, it doesn't crash nor leak memory.
     free(p_concave_points)
 
     return arr_concave_points
